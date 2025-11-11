@@ -1,0 +1,417 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("DATABASE_URL")
+}
+
+// user modules
+
+model User {
+    id                 String     @id @default(auto()) @map("_id") @db.ObjectId
+    username           String     @unique
+    email              String     @unique
+    password           String
+    phoneNo            String     @unique
+    roleTitle          String
+    reason             String?
+    passwordToken      String?
+    image              Json?
+    certificationImage Json?
+    otp                String?
+    isMFA              Boolean    @default(false)
+    status             UserSTATUS @default(PENDING)
+    roles              Role       @relation(fields: [roleId], references: [id])
+    roleId             String     @db.ObjectId
+
+    otps Otp[]
+
+    tokens Token[]
+
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    deletedAt DateTime?
+    isDeleted Boolean   @default(false)
+
+    RefreshToken       RefreshToken[]
+    Product            Product[]
+    ProductReview      ProductReview[]
+    Subscriptions      Subscriptions[]
+    Notificatons       Notificatons[]
+    Billings           UserBilling[]
+    Auction            Auction[]
+    AuctionParticipant AuctionParticipant[]
+    Orders             Orders[]
+    Transaction        Transaction[]
+}
+
+model Role {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    title     String   @unique
+    scopes    Json
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    users User[]
+}
+
+model Token {
+    id        String    @id @default(auto()) @map("_id") @db.ObjectId
+    scopes    Json
+    revokedAt DateTime?
+    expireAt  DateTime
+
+    userId       String         @db.ObjectId
+    user         User           @relation(fields: [userId], references: [id])
+    RefreshToken RefreshToken[]
+    createdAt    DateTime       @default(now())
+    updatedAt    DateTime       @updatedAt
+}
+
+model Otp {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    otp       String
+    userId    String   @db.ObjectId
+    user      User     @relation(fields: [userId], references: [id])
+    expireAt  DateTime
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model RefreshToken {
+    id        String    @id @default(auto()) @map("_id") @db.ObjectId
+    expireAt  DateTime
+    revokedAt DateTime?
+
+    userId String @db.ObjectId
+    user   User   @relation(fields: [userId], references: [id])
+
+    accessTokenId String   @db.ObjectId
+    accessToken   Token    @relation(fields: [accessTokenId], references: [id])
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+}
+
+//product module
+
+model Product {
+    id                    String             @id @default(auto()) @map("_id") @db.ObjectId
+    images                Json?
+    description           String?
+    reason                String?
+    title                 String             @default("")
+    metalType             String
+    weight                Float?
+    karat                 Float?
+    origin                ManufacturingPrice @relation(fields: [originId], references: [id])
+    originId              String             @db.ObjectId
+    gemTypeCertification  String
+    gemCertificationImage Json?
+    status                ProductStatus      @default(PENDING)
+    noOfView              Int?
+
+    userId             String               @db.ObjectId
+    user               User                 @relation(fields: [userId], references: [id])
+    categoryId         String               @db.ObjectId
+    category           Category             @relation(fields: [categoryId], references: [id])
+    createdAt          DateTime             @default(now())
+    updatedAt          DateTime             @updatedAt
+    deletedAt          DateTime?
+    isDeleted          Boolean              @default(false)
+    ProductReview      ProductReview[]
+    Auction            Auction[]
+    AuctionParticipant AuctionParticipant[]
+    OrderItems         OrderItems[]
+}
+
+model ProductReview {
+    id     String @id @default(auto()) @map("_id") @db.ObjectId
+    scores Int
+
+    productId String  @db.ObjectId
+    products  Product @relation(fields: [productId], references: [id])
+
+    userId String @db.ObjectId
+    user   User   @relation(fields: [userId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Category {
+    id          String    @id @default(auto()) @map("_id") @db.ObjectId
+    name        String
+    image       Json?
+    description String
+    subCategory Json?
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+    deletedAt   DateTime?
+    isDeleted   Boolean   @default(false)
+    Product     Product[]
+}
+
+// subscriptions module 
+
+model Subscriptions {
+    id                String              @id @default(auto()) @map("_id") @db.ObjectId
+    priorityPlacement Int
+    name              String
+    noOfProduct       Int
+    auctionLimit      Int
+    featureLimit      Int
+    price             Float
+    status            SubscriptionStatus? @default(DEACTIVATE)
+    planType          PlanTypeStatus
+
+    userId String @db.ObjectId
+    user   User   @relation(fields: [userId], references: [id])
+
+    createdAt   DateTime      @default(now())
+    updatedAt   DateTime      @updatedAt
+    Billings    UserBilling[]
+    Transaction Transaction[]
+}
+
+model Notificatons {
+    id      String   @id @default(auto()) @map("_id") @db.ObjectId
+    title   String
+    content String
+    date    DateTime
+    time    DateTime
+    userId  String   @db.ObjectId
+    user    User     @relation(fields: [userId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model UserBilling {
+    id            String        @id @default(auto()) @map("_id") @db.ObjectId
+    invoiceNumber String        @unique()
+    amount        Float
+    paymentMethod String
+    status        BillingStatus @default(PENDING)
+    dueDate       DateTime
+    paidAt        DateTime
+    paymentId     String
+    userId        String        @db.ObjectId
+    user          User          @relation(fields: [userId], references: [id])
+
+    subscriptionId String        @db.ObjectId
+    subscriptions  Subscriptions @relation(fields: [subscriptionId], references: [id])
+    createdAt      DateTime      @default(now())
+    updatedAt      DateTime      @updatedAt
+
+    Transaction Transaction[]
+}
+
+model Transaction {
+    id            String                @id @default(auto()) @map("_id") @db.ObjectId
+    invoiceNumber String                @unique()
+    amount        Float
+    paymentMethod String
+    paymentStatus TransactionStatus     @default(PENDING)
+    metadate      Json
+    cardDetails   Json
+    action        TransactionTypeStatus
+    tax           Float
+    userId        String                @db.ObjectId
+    user          User                  @relation(fields: [userId], references: [id])
+
+    subscriptionId String        @db.ObjectId
+    subscription   Subscriptions @relation(fields: [subscriptionId], references: [id])
+    billingId      String        @db.ObjectId()
+    billing        UserBilling   @relation(fields: [billingId], references: [id])
+
+    orderId String? @db.ObjectId
+    order   Orders? @relation(fields: [orderId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+// auction module 
+
+model Auction {
+    id            String        @id @default(auto()) @map("_id") @db.ObjectId
+    typeOfAuction TypeOfAuction
+    startTime     DateTime?
+    endTime       DateTime?
+    minimumPrice  Float?
+    targetPrice   Float?
+    insuranceFee  Float
+    status        AuctionStatus @default(PENDING)
+    noOfBid       Float?        @default(0)
+    userId        String        @db.ObjectId
+    users         User          @relation(fields: [userId], references: [id])
+
+    productId          String               @db.ObjectId
+    products           Product              @relation(fields: [productId], references: [id])
+    createdAt          DateTime             @default(now())
+    updatedAt          DateTime             @updatedAt
+    deletedAt          DateTime?
+    AuctionParticipant AuctionParticipant[]
+}
+
+model AuctionParticipant {
+    id           String                   @id @default(auto()) @map("_id") @db.ObjectId
+    bidAmount    Float
+    bidTime      DateTime
+    status       AuctionParticipantStatus @default(PENDING)
+    insuranceFee Float?
+    isPayment    Boolean?                 @default(false)
+
+    userId String @db.ObjectId
+    users  User   @relation(fields: [userId], references: [id])
+
+    auctionId String  @db.ObjectId
+    auctions  Auction @relation(fields: [auctionId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    Product   Product? @relation(fields: [productId], references: [id])
+    productId String?  @db.ObjectId
+}
+
+//orders module
+
+model Orders {
+    id                      String              @id @default(auto()) @map("_id") @db.ObjectId
+    paymentMethod           PaymentMethodStatus
+    paymentStatus           PaymentStatus       @default(PENDING)
+    coupon                  String
+    couponDiscountedAmmount Float
+    address                 Json
+    quantity                Int
+    status                  OrdersStatus        @default(PENDING)
+    subTotal                Float
+    tax                     Float
+    makingCharge            Float
+    total                   Float
+
+    userId String @db.ObjectId
+    users  User   @relation(fields: [userId], references: [id])
+
+    deletedAt   DateTime?
+    createdAt   DateTime      @default(now())
+    updatedAt   DateTime      @updatedAt
+    OrderItems  OrderItems[]
+    Transaction Transaction[]
+}
+
+model OrderItems {
+    id              String @id @default(auto()) @map("_id") @db.ObjectId
+    quantity        Int
+    price           Float
+    basePrice       Float
+    discountedPrice Float
+    refundedPrice   Float
+
+    orderId String @db.ObjectId
+    orders  Orders @relation(fields: [orderId], references: [id])
+
+    productId String  @db.ObjectId
+    products  Product @relation(fields: [productId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model ManufacturingPrice {
+    id          String  @id @default(auto()) @map("_id") @db.ObjectId
+    origin      String  @unique
+    maximumFees Int
+    minimumFees Int
+    description String?
+
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    Product   Product[]
+}
+
+enum PlanTypeStatus {
+    MONTHLY
+    ANNUALLY
+}
+
+enum UserSTATUS {
+    PENDING
+    APPROVE
+    REJECTED
+}
+
+enum ProductStatus {
+    ACTIVE
+    PENDING
+    REJECTED
+}
+
+enum SubscriptionStatus {
+    ACTIVATE
+    DEACTIVATE
+}
+
+enum BillingStatus {
+    PENDING
+    FAILED
+    PAID
+    REFUNDED
+}
+
+enum TypeOfAuction {
+    TIME_BASE_AUCTION
+    TARGET_PRICE_AUCTION
+}
+
+enum AuctionStatus {
+    APPROVED
+    REJECT
+    PENDING
+    COMPLETE
+}
+
+enum AuctionParticipantStatus {
+    WIN
+    LOST
+    CANCELLED
+    PENDING
+}
+
+enum PaymentMethodStatus {
+    LOCAL_GATEWAY_PAYMENT
+    DIGITAL_WALLET
+}
+
+enum PaymentStatus {
+    PENDING
+    FAILED
+    PAID
+    VOID
+    REFUND
+}
+
+enum OrdersStatus {
+    PENDING
+    CANCEL
+    REFUNDED
+    RECEIVE
+}
+
+enum TransactionStatus {
+    PAID
+    FAILED
+    PENDING
+    REFUND
+}
+
+enum TransactionTypeStatus {
+    Subscription
+    Order
+}
