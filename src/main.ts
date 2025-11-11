@@ -10,6 +10,7 @@ interface FormattedErrors {
   [key: string]: string;
 }
 
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
   dotenv.config();
